@@ -100,6 +100,7 @@ def apply(s_d, w_d):
     # print(size_detect)
     w_d.destroy()
 
+
 def zone_detect():
     """
     Функция отображает первый кадр для выбора на нем зоны детекции
@@ -108,15 +109,14 @@ def zone_detect():
     global imgtk
     # Так как после отработки функции переменные удаляются, для отображения картинки делаем переменную глобальной
     cap = cv2.VideoCapture(filepath[0])  # Захватываем видео с файла
-    global frame_width
-    global frame_height
+    frame_width
+    frame_height
     global xy_coord
     frame_width = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
     frame_height = (cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     if len(xy_coord) == 0:
         xy_coord.append([2, 2])
         xy_coord.append([int(frame_width) // frame_zoom, int(frame_height) // frame_zoom])
-
 
     _, frame = cap.read()
     frame = cv2.resize(frame, (int(frame_width) // frame_zoom, int(frame_height) // frame_zoom),
@@ -130,7 +130,7 @@ def zone_detect():
     window_zone.rowconfigure([0, 1, 2, 3], minsize=30)
     window_zone.columnconfigure([0, 1], minsize=100)
     lab_text_zone = tk.Label(window_zone, text="Чувствительность\nВ _% от зоны поиска")
-    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda : apply(ent_proc.get(), window_zone))
+    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone))
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
     ent_proc.insert(0, str(size_detect))  # Выводим в эту строку значение по умолчанию 50%
     global lab_coord
@@ -144,7 +144,6 @@ def zone_detect():
                             tags="myRectangle")
     canvas.grid(row=0, column=0, rowspan=4, padx=5, pady=5)
     canvas.bind('<Button-1>', motion)
-
 
 
 window = tk.Tk()  # Создается главное окно

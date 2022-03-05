@@ -26,7 +26,7 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
 
     """
     if os.path.exists("ffmpeg.exe"):
-        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "'+ name_file[:-4]+'_source-video.h264"')
+        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' + name_file[:-4]+'_source-video.h264"')
         os.system(
             'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[:-4] + '_recovered.avi"')
         os.remove(name_file[:-4] + '_source-video.h264')
@@ -58,7 +58,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     start_detect = time.time()  # Получение времени начала обработки видео файла
 
     cap = cv2.VideoCapture(name_file)  # Захватываем видео с файла
-    #cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('H', '2', '6', '4'))
+    # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('H', '2', '6', '4'))
     off_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # Получаем общее количество фреймов
 
     frame_width_det = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
@@ -77,11 +77,11 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
         ret1, frame1 = cap.read()
         # Данное смещение позволяет сгруппировать очертания двигающегося объекта
         for _ in range(frame_shift):
-           cap.read()
+            cap.read()
         ret2, frame2 = cap.read()
         # Данное смещение служит для ускорения
         for _ in range(play_speed):
-           cap.read()
+            cap.read()
         if cap.get(cv2.CAP_PROP_POS_FRAMES) == off_frames:
             break
         if not ret1 * ret2:
@@ -163,8 +163,8 @@ def algorithm_detector_1(frame1, frame2, xy_coord: list, frame_zoom: int, size_d
             continue
         output.write(frame2)  # Записываем не измененный фрейм
         cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Получение прямоугольника из точек кортежа
-        #Рисуем красную точку
-        #cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
+        # Рисуем красную точку
+        # cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
         # Также можно было просто нарисовать контур объекта
         # cv2.drawContours(frame1, contours, -1, (0, 255, 0), 2)
     return frame1
