@@ -28,8 +28,6 @@ xy_coord = []
 size_detect = 20
 # Кортеж адресов обрабатываемых файлов
 filepath = ()
-# Флаг остановки программы
-stop_detector = True
 
 
 def open_file():
@@ -50,13 +48,16 @@ def start():
     """
     Функция обработки нажатия кнопки Старт
     """
-    if len(xy_coord) == 2:
+
+    if len(xy_coord) == 2 and but_start['text'] == 'Старт':
+        but_start['text'] = 'Стоп'
         for file_path in filepath:
             if not dt.detector(file_path, chk_video.get(), xy_coord, frame_zoom,
-                               size_detect, lab_o_proc, window, frame_shift, play_speed):
+                               size_detect, lab_o_proc, window, frame_shift, play_speed, but_start):
                 dt.corrector(file_path, chk_video.get(), xy_coord, frame_zoom,
-                             size_detect, lab_o_proc, window, frame_shift, play_speed)
-            lab_o_count["text"] = filepath.index(file_path) + 1
+                             size_detect, lab_o_proc, window, frame_shift, play_speed, but_start)
+            if but_start['text'] == "Стоп":
+                lab_o_count["text"] = filepath.index(file_path) + 1
             window.update()
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
             if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
@@ -70,10 +71,8 @@ def start():
                 os.remove('list.txt')
     elif len(xy_coord) == 0:
         print("Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
-
-def stop():
-    global stop_detector
-    stop_detector = False
+    if but_start['text'] == "Стоп":
+        but_start['text'] = 'Старт'
 
 
 def motion(event):
@@ -101,7 +100,6 @@ def apply(s_d, w_d):
     # print(size_detect)
     w_d.destroy()
 
-
 def zone_detect():
     """
     Функция отображает первый кадр для выбора на нем зоны детекции
@@ -110,12 +108,15 @@ def zone_detect():
     global imgtk
     # Так как после отработки функции переменные удаляются, для отображения картинки делаем переменную глобальной
     cap = cv2.VideoCapture(filepath[0])  # Захватываем видео с файла
+    global frame_width
+    global frame_height
     global xy_coord
     frame_width = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
     frame_height = (cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     if len(xy_coord) == 0:
         xy_coord.append([2, 2])
         xy_coord.append([int(frame_width) // frame_zoom, int(frame_height) // frame_zoom])
+
 
     _, frame = cap.read()
     frame = cv2.resize(frame, (int(frame_width) // frame_zoom, int(frame_height) // frame_zoom),
@@ -129,7 +130,7 @@ def zone_detect():
     window_zone.rowconfigure([0, 1, 2, 3], minsize=30)
     window_zone.columnconfigure([0, 1], minsize=100)
     lab_text_zone = tk.Label(window_zone, text="Чувствительность\nВ _% от зоны поиска")
-    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone))
+    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda : apply(ent_proc.get(), window_zone))
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
     ent_proc.insert(0, str(size_detect))  # Выводим в эту строку значение по умолчанию 50%
     global lab_coord
@@ -143,6 +144,7 @@ def zone_detect():
                             tags="myRectangle")
     canvas.grid(row=0, column=0, rowspan=4, padx=5, pady=5)
     canvas.bind('<Button-1>', motion)
+
 
 
 window = tk.Tk()  # Создается главное окно
@@ -176,7 +178,6 @@ chk_cut.set(0)
 lab_chk_cut = tk.Checkbutton(text="Склеить фрагменты", variable=chk_cut)
 lab2 = tk.Label(text="00:00")
 but_start = tk.Button(text="Старт", command=start, width=12)
-but_stop = tk.Button(text="Стоп", width=12,command=stop)
 
 # Размещаем его на экране
 lab_file.grid(row=0, column=0)
@@ -188,7 +189,6 @@ but_zone.grid(row=1, column=2)
 lab_obr.grid(row=2, column=0)
 lab_o_count.grid(row=2, column=1)
 but_start.grid(row=2, column=2)
-but_stop.grid(row=3, column=2)
 lab_chk.grid(row=3, column=0, sticky="w")
 lab_chk_cut.grid(row=4, column=0, sticky="w")
 window.mainloop()

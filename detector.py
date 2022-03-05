@@ -11,7 +11,7 @@ import os
 # import main
 
 def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, size_detect: int,
-              lab_o_proc, window, frame_shift, play_speed):
+              lab_o_proc, window, frame_shift, play_speed, but_start):
     """Данная функция восстанавливает файл с поврежденной временной шкалой и запускает детектор.
     name_file - Имя файла, который передается в обработку
     play_speed - Скорость воспроизведения (Пока не работает)
@@ -31,14 +31,14 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
             'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[:-4] + '_recovered.avi"')
         os.remove(name_file[:-4] + '_source-video.h264')
         detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
-                 lab_o_proc, window, frame_shift, play_speed)
+                 lab_o_proc, window, frame_shift, play_speed, but_start)
 
     else:
         print("Для корректной работы необходим файл ffmpeg.exe")
 
 
 def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, size_detect: int,
-             lab_o_proc, window, frame_shift, play_speed) -> bool:
+             lab_o_proc, window, frame_shift, play_speed, but_start) -> bool:
     """Данная функция производит поиск движения в заданной области, в текущем файле.
     name_file - Имя файла, который передается в обработку
     chk_video_det - Флаг отображения окна воспроизведения при поиске
@@ -51,6 +51,9 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     play_speed - Пропуск фреймов для ускорения
 
     """
+    if but_start['text'] == 'Старт':
+        return True
+
     none_frame: int = 0  # Счетчик для проверки пустых фреймов
     start_detect = time.time()  # Получение времени начала обработки видео файла
 
@@ -67,6 +70,10 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     if chk_video_det:
         cv2.namedWindow(name_file, 0)  # Определяем окно вывода
     while True:  # Вывод кадров производится в цикле
+        if but_start['text'] == 'Старт':
+            cap.release()
+            output.release()
+            break
         ret1, frame1 = cap.read()
         # Данное смещение позволяет сгруппировать очертания двигающегося объекта
         for _ in range(frame_shift):
@@ -156,8 +163,8 @@ def algorithm_detector_1(frame1, frame2, xy_coord: list, frame_zoom: int, size_d
             continue
         output.write(frame2)  # Записываем не измененный фрейм
         cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Получение прямоугольника из точек кортежа
-        Рисуем красную точку
-        cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
+        #Рисуем красную точку
+        #cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
         # Также можно было просто нарисовать контур объекта
         # cv2.drawContours(frame1, contours, -1, (0, 255, 0), 2)
     return frame1
