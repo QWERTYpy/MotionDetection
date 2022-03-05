@@ -156,8 +156,8 @@ def algorithm_detector_1(frame1, frame2, xy_coord: list, frame_zoom: int, size_d
             continue
         output.write(frame2)  # Записываем не измененный фрейм
         cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Получение прямоугольника из точек кортежа
-        # Рисуем красную точку
-        # cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
+        Рисуем красную точку
+        cv2.circle(frame1, (int(frame_width_det) - 50, int(frame_height_det) - 40), 10, (0, 0, 255),-1)
         # Также можно было просто нарисовать контур объекта
         # cv2.drawContours(frame1, contours, -1, (0, 255, 0), 2)
     return frame1
