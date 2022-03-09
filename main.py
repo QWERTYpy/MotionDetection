@@ -66,6 +66,9 @@ def start(flag=True):
                 if result_cor == 'Pause':
                     print('Выполнение программы приостановлено после коррекции.')
                     break
+                if result_cor == 'Ffmpeg':
+                    print("Для корректной работы необходим файл ffmpeg.exe")
+                    break
             elif result_det == 'Pause':
                 print("Выполнение программы остановлено до коррекции.")
             if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза':
@@ -83,8 +86,6 @@ def start(flag=True):
                 os.remove('list.txt')
     elif len(xy_coord) == 0:
         print("Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
-    #if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза' and flag:
-     #   but_start['text'] = 'Старт'
 
 
 def pause():

@@ -8,8 +8,6 @@ import time
 import os
 
 
-# import main
-
 def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, size_detect: int,
               lab_o_proc, window, frame_shift, play_speed, but_start, but_pause):
     """Данная функция восстанавливает файл с поврежденной временной шкалой и запускает детектор.
@@ -23,20 +21,20 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
     window - Ссылка на окно
     frame_shift - Сдвиг фреймов при обнаружении движения
     play_speed - Пропуск фреймов для ускорения
+    but_start - Кнопка Старт
+    but_pause - Кнопка Пауза
 
     """
     if os.path.exists("ffmpeg.exe"):
-        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' + name_file[
-                                                                                                        :-4] + '_source-video.h264"')
-        os.system(
-            'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[
-                                                                                                             :-4] + '_recovered.avi"')
+        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' +
+                  name_file[:-4] + '_source-video.h264"')
+        os.system('ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' +
+                  name_file[:-4] + '_recovered.avi"')
         os.remove(name_file[:-4] + '_source-video.h264')
         return detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
                         lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
 
     else:
-        print("Для корректной работы необходим файл ffmpeg.exe")
         return 'Ffmpeg'
 
 
@@ -52,6 +50,8 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     window - Ссылка на окно
     frame_shift - Сдвиг фреймов при обнаружении движения
     play_speed - Пропуск фреймов для ускорения
+    but_start - Кнопка Старт
+    but_pause - Кнопка Пауза
 
     """
     if but_start['text'] == 'Старт':
@@ -67,7 +67,9 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     frame_width_det = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
     frame_height_det = (cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    output = cv2.VideoWriter(name_file[:-4] + "_detect" + name_file[len(name_file) - 4:], cv2.VideoWriter_fourcc('H', '2', '6', '4'), 20, (int(frame_width_det), int(frame_height_det)))  # Параметры выгрузки MJPG PIM1 XVID
+    output = cv2.VideoWriter(name_file[:-4] + "_detect" + name_file[len(name_file) - 4:],
+                             cv2.VideoWriter_fourcc('H', '2', '6', '4'), 20,
+                             (int(frame_width_det), int(frame_height_det)))  # Параметры выгрузки MJPG PIM1 XVID
     if chk_video_det:
         cv2.namedWindow(name_file, 0)  # Определяем окно вывода
     while True:  # Вывод кадров производится в цикле
