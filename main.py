@@ -42,21 +42,33 @@ def open_file():
         return
     lab_f_count["text"] = len(filepath)
     lab_o_count["text"] = 0
+    but_start['text'] = 'Старт'
 
 
-def start():
+def start(flag=True):
     """
     Функция обработки нажатия кнопки Старт
     """
-
-    if len(xy_coord) == 2 and but_start['text'] == 'Старт':
-        but_start['text'] = 'Стоп'
-        for file_path in filepath:
-            if not dt.detector(file_path, chk_video.get(), xy_coord, frame_zoom,
-                               size_detect, lab_o_proc, window, frame_shift, play_speed, but_start):
-                dt.corrector(file_path, chk_video.get(), xy_coord, frame_zoom,
-                             size_detect, lab_o_proc, window, frame_shift, play_speed, but_start)
-            if but_start['text'] == "Стоп":
+    if len(xy_coord) == 2:
+        if but_start['text'] == 'Старт' and flag:
+            but_start['text'] = 'Стоп'
+            lab_o_count['text'] = 0
+        elif but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза' and flag:
+            but_start['text'] = 'Старт'
+        for file_path_id in range(int(lab_o_count['text']), len(filepath)):
+            file_path = filepath[file_path_id]
+            result_det = dt.detector(file_path, chk_video.get(), xy_coord, frame_zoom,
+                                     size_detect, lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
+            if result_det == 'Correct':
+                result_cor = dt.corrector(file_path, chk_video.get(), xy_coord, frame_zoom,
+                                          size_detect, lab_o_proc, window, frame_shift, play_speed, but_start,
+                                          but_pause)
+                if result_cor == 'Pause':
+                    print('Выполнение программы приостановлено после коррекции.')
+                    break
+            elif result_det == 'Pause':
+                print("Выполнение программы остановлено до коррекции.")
+            if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза':
                 lab_o_count["text"] = filepath.index(file_path) + 1
             window.update()
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
@@ -71,8 +83,8 @@ def start():
                 os.remove('list.txt')
     elif len(xy_coord) == 0:
         print("Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
-    if but_start['text'] == "Стоп":
-        but_start['text'] = 'Старт'
+    #if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза' and flag:
+     #   but_start['text'] = 'Старт'
 
 
 def pause():
@@ -80,6 +92,8 @@ def pause():
         but_pause['text'] = 'Продолжить'
     else:
         but_pause['text'] = 'Пауза'
+        start(False)
+
 
 def motion(event):
     """

@@ -26,12 +26,14 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
 
     """
     if os.path.exists("ffmpeg.exe"):
-        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' + name_file[:-4]+'_source-video.h264"')
+        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' + name_file[
+                                                                                                        :-4] + '_source-video.h264"')
         os.system(
-            'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[:-4] + '_recovered.avi"')
+            'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[
+                                                                                                             :-4] + '_recovered.avi"')
         os.remove(name_file[:-4] + '_source-video.h264')
         return detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
-                 lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
+                        lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
 
     else:
         print("Для корректной работы необходим файл ffmpeg.exe")
@@ -53,7 +55,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
 
     """
     if but_start['text'] == 'Старт':
-        return True
+        return "OK"
 
     none_frame: int = 0  # Счетчик для проверки пустых фреймов
     start_detect = time.time()  # Получение времени начала обработки видео файла
@@ -65,13 +67,13 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     frame_width_det = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
     frame_height_det = (cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    output = cv2.VideoWriter(name_file[:-4] + "_detect" + name_file[len(name_file) - 4:],
-                             cv2.VideoWriter_fourcc('H', '2', '6', '4'), 20,
-                             (int(frame_width_det), int(frame_height_det)))  # Параметры выгрузки MJPG PIM1 XVID
+    output = cv2.VideoWriter(name_file[:-4] + "_detect" + name_file[len(name_file) - 4:], cv2.VideoWriter_fourcc('H', '2', '6', '4'), 20, (int(frame_width_det), int(frame_height_det)))  # Параметры выгрузки MJPG PIM1 XVID
     if chk_video_det:
         cv2.namedWindow(name_file, 0)  # Определяем окно вывода
     while True:  # Вывод кадров производится в цикле
         if but_pause['text'] == 'Продолжить':
+            cap.release()
+            output.release()
             return 'Pause'
         if but_start['text'] == 'Старт':
             cap.release()
@@ -99,7 +101,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
         # frame1=frame1[y1_search:y2_search,x1_search:x2_search] #Обрезка фрейма до нужного размера. Может пригодиться
         # frame2=frame2[y1_search:y2_search,x1_search:x2_search]
         # Вывод в процентах прогресса
-        lab_o_proc["text"] = str(cap.get(cv2.CAP_PROP_POS_FRAMES) * 100 // off_frames+1) + " %"
+        lab_o_proc["text"] = str(cap.get(cv2.CAP_PROP_POS_FRAMES) * 100 // off_frames + 1) + " %"
         window.update()  # Обновление окна для отрисовки прогресса
         if ret2:
             if chk_video_det:
@@ -127,7 +129,6 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     end_detect = time.time()  # Время завершения обработки видео файла
     # Выводит время затраченное на обработку файла
     print(name_file, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
-
     return 'OK'
 
 
