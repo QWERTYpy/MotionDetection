@@ -109,8 +109,6 @@ def zone_detect():
     global imgtk
     # Так как после отработки функции переменные удаляются, для отображения картинки делаем переменную глобальной
     cap = cv2.VideoCapture(filepath[0])  # Захватываем видео с файла
-    frame_width
-    frame_height
     global xy_coord
     frame_width = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
     frame_height = (cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
