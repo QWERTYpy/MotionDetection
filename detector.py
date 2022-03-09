@@ -11,7 +11,7 @@ import os
 # import main
 
 def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, size_detect: int,
-              lab_o_proc, window, frame_shift, play_speed, but_start):
+              lab_o_proc, window, frame_shift, play_speed, but_start, but_pause):
     """Данная функция восстанавливает файл с поврежденной временной шкалой и запускает детектор.
     name_file - Имя файла, который передается в обработку
     play_speed - Скорость воспроизведения (Пока не работает)
@@ -30,15 +30,16 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
         os.system(
             'ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' + name_file[:-4] + '_recovered.avi"')
         os.remove(name_file[:-4] + '_source-video.h264')
-        detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
-                 lab_o_proc, window, frame_shift, play_speed, but_start)
+        return detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
+                 lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
 
     else:
         print("Для корректной работы необходим файл ffmpeg.exe")
+        return 'Ffmpeg'
 
 
 def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, size_detect: int,
-             lab_o_proc, window, frame_shift, play_speed, but_start) -> bool:
+             lab_o_proc, window, frame_shift, play_speed, but_start, but_pause) -> str:
     """Данная функция производит поиск движения в заданной области, в текущем файле.
     name_file - Имя файла, который передается в обработку
     chk_video_det - Флаг отображения окна воспроизведения при поиске
@@ -70,6 +71,8 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     if chk_video_det:
         cv2.namedWindow(name_file, 0)  # Определяем окно вывода
     while True:  # Вывод кадров производится в цикле
+        if but_pause['text'] == 'Продолжить':
+            return 'Pause'
         if but_start['text'] == 'Старт':
             cap.release()
             output.release()
@@ -90,7 +93,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
                 print('Превышено допустимое количество пустых фреймов. Начато восстановление файла.')
                 output.release()  # Закрываем файл для вывода
                 os.remove(name_file[:-4] + '_detect' + name_file[len(name_file) - 4:])  # Удаляем его
-                return False  # Возвращаем флаг, что надо запустить восстановление
+                return 'Correct'  # Возвращаем флаг, что надо запустить восстановление
             continue
 
         # frame1=frame1[y1_search:y2_search,x1_search:x2_search] #Обрезка фрейма до нужного размера. Может пригодиться
@@ -125,7 +128,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     # Выводит время затраченное на обработку файла
     print(name_file, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
 
-    return True
+    return 'OK'
 
 
 def algorithm_detector_1(frame1, frame2, xy_coord: list, frame_zoom: int, size_detect: int, output):
