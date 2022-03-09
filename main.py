@@ -75,6 +75,12 @@ def start():
         but_start['text'] = 'Старт'
 
 
+def pause():
+    if but_pause['text'] == 'Пауза':
+        but_pause['text'] = 'Продолжить'
+    else:
+        but_pause['text'] = 'Пауза'
+
 def motion(event):
     """
     Функция определения позиции курсора
@@ -175,6 +181,7 @@ chk_cut.set(0)
 lab_chk_cut = tk.Checkbutton(text="Склеить фрагменты", variable=chk_cut)
 lab2 = tk.Label(text="00:00")
 but_start = tk.Button(text="Старт", command=start, width=12)
+but_pause = tk.Button(text="Пауза", command=pause, width=12)
 
 # Размещаем его на экране
 lab_file.grid(row=0, column=0)
@@ -186,6 +193,7 @@ but_zone.grid(row=1, column=2)
 lab_obr.grid(row=2, column=0)
 lab_o_count.grid(row=2, column=1)
 but_start.grid(row=2, column=2)
+but_pause.grid(row=3, column=2)
 lab_chk.grid(row=3, column=0, sticky="w")
 lab_chk_cut.grid(row=4, column=0, sticky="w")
 window.mainloop()
