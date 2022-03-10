@@ -153,6 +153,8 @@ def zone_detect():
     window_zone.title("выберите зону детекции")
     window_zone.rowconfigure([0, 1, 2, 3], minsize=30)
     window_zone.columnconfigure([0, 1], minsize=100)
+    _, x_win, y_win = window.geometry().split('+')
+    window_zone.geometry('+'+x_win+'+'+y_win)
     lab_text_zone = tk.Label(window_zone, text="Чувствительность\nВ _% от зоны поиска")
     btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone))
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
@@ -172,6 +174,7 @@ def zone_detect():
 window = tk.Tk()  # Создается главное окно
 window.title("Детектор движения в файле v.1.2")  # Установка названия окна
 window.resizable(width=False, height=False)
+window.geometry('350x150+100+100')
 window.rowconfigure([0, 1, 2, 3, 4], minsize=30)
 window.columnconfigure([0, 1, 2], minsize=100)
 

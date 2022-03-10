@@ -72,14 +72,18 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
                              (int(frame_width_det), int(frame_height_det)))  # Параметры выгрузки MJPG PIM1 XVID
     if chk_video_det:
         cv2.namedWindow(name_file, 0)  # Определяем окно вывода
+        _, x_win, y_win = window.geometry().split('+')
+        cv2.moveWindow(name_file, int(x_win)+350, int(y_win))
     while True:  # Вывод кадров производится в цикле
         if but_pause['text'] == 'Продолжить':
             cap.release()
             output.release()
+            cv2.destroyAllWindows()
             return 'Pause'
         if but_start['text'] == 'Старт':
             cap.release()
             output.release()
+            cv2.destroyAllWindows()
             break
         ret1, frame1 = cap.read()
         # Данное смещение позволяет сгруппировать очертания двигающегося объекта
@@ -96,6 +100,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
             if none_frame > 10:
                 print('Превышено допустимое количество пустых фреймов. Начато восстановление файла.')
                 output.release()  # Закрываем файл для вывода
+                cv2.destroyAllWindows()
                 os.remove(name_file[:-4] + '_detect' + name_file[len(name_file) - 4:])  # Удаляем его
                 return 'Correct'  # Возвращаем флаг, что надо запустить восстановление
             continue
