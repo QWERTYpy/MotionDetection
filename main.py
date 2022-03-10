@@ -7,6 +7,7 @@ from tkinter.filedialog import askopenfilenames  # Отвечает за отк�
 from PIL import Image, ImageTk  # Отвечает за обработку картинок
 import os
 import configparser
+import tkinter.messagebox
 
 import detector as dt
 
@@ -55,6 +56,7 @@ def start(flag=True):
             lab_o_count['text'] = 0
         elif but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза' and flag:
             but_start['text'] = 'Старт'
+
         for file_path_id in range(int(lab_o_count['text']), len(filepath)):
             file_path = filepath[file_path_id]
             result_det = dt.detector(file_path, chk_video.get(), xy_coord, frame_zoom,
@@ -63,17 +65,16 @@ def start(flag=True):
                 result_cor = dt.corrector(file_path, chk_video.get(), xy_coord, frame_zoom,
                                           size_detect, lab_o_proc, window, frame_shift, play_speed, but_start,
                                           but_pause)
-                if result_cor == 'Pause':
-                    print('Выполнение программы приостановлено после коррекции.')
-                    break
-                if result_cor == 'Ffmpeg':
+                if result_cor == 'Pause': break
+                elif result_cor == 'Ffmpeg':
                     print("Для корректной работы необходим файл ffmpeg.exe")
                     break
-            elif result_det == 'Pause':
-                print("Выполнение программы остановлено до коррекции.")
+            elif result_det == 'Pause': break
+
             if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза':
                 lab_o_count["text"] = filepath.index(file_path) + 1
-            window.update()
+                window.update()
+
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
             if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
                 my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
@@ -85,10 +86,12 @@ def start(flag=True):
                           '_all_result' + file_path[len(file_path) - 4:])
                 os.remove('list.txt')
     elif len(xy_coord) == 0:
-        print("Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
+        tkinter.messagebox.showinfo("Внимание", "Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
 
 
 def pause():
+    if but_start['text'] == 'Старт':
+        return False
     if but_pause['text'] == 'Пауза':
         but_pause['text'] = 'Продолжить'
     else:
@@ -129,6 +132,9 @@ def zone_detect():
     """
     global imgtk
     # Так как после отработки функции переменные удаляются, для отображения картинки делаем переменную глобальной
+    if not len(filepath):
+        tkinter.messagebox.showinfo("Внимание", "Пожалуйста, выберите файл для обработки.")
+        return False
     cap = cv2.VideoCapture(filepath[0])  # Захватываем видео с файла
     global xy_coord
     frame_width = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
@@ -141,8 +147,7 @@ def zone_detect():
     frame = cv2.resize(frame, (int(frame_width) // frame_zoom, int(frame_height) // frame_zoom),
                        interpolation=cv2.INTER_AREA)
     cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-    img = Image.fromarray(cv2image)
-    imgtk = ImageTk.PhotoImage(image=img)
+    imgtk = ImageTk.PhotoImage(image=Image.fromarray(cv2image))
     cap.release()
     window_zone = tk.Toplevel(window)
     window_zone.title("выберите зону детекции")
@@ -152,7 +157,6 @@ def zone_detect():
     btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone))
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
     ent_proc.insert(0, str(size_detect))  # Выводим в эту строку значение по умолчанию 50%
-    global lab_coord
     lab_text_zone.grid(row=0, column=1, sticky='s', padx=5, pady=5)
     btn_prim.grid(row=3, column=1, padx=5, pady=5)
     ent_proc.grid(row=1, column=1, sticky='n', padx=5, pady=5)
@@ -171,7 +175,7 @@ window.resizable(width=False, height=False)
 window.rowconfigure([0, 1, 2, 3, 4], minsize=30)
 window.columnconfigure([0, 1, 2], minsize=100)
 
-# imgtk = ImageTk.PhotoImage()
+# Создаем необходимые элементы управления
 # Файлов: шт
 lab_file = tk.Label(text="Файлов:")
 lab_f_count = tk.Label(text="0")
