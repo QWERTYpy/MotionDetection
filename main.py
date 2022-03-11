@@ -206,7 +206,8 @@ def ffmpeg_det():
             # ffmpeg -i test.avi -vf "crop=300:300:1200:200,select='gt(scene,0.009)',setpts=N/(25*TB)" -y out2.mp4
             # ffmpeg -i pr.avi -vf "crop=300:300:740:300,select='gt(scene,0.004)',showinfo" -f null - > cor.log 2>&1
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
-
+        but_ffmpeg['text'] = 'Готово'
+        window.update()
         #if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
         #    my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
         #    for name_file in os.listdir(os.path.dirname(file_path)):
