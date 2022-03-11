@@ -8,11 +8,12 @@ from PIL import Image, ImageTk  # Отвечает за обработку ка�
 import os
 import configparser
 import tkinter.messagebox
+import time
 
 import detector as dt
 
 """
-Нужно добавить паузу и досрочное прерывание
+Нужно добавить проверку вводимых значений
 """
 config = configparser.ConfigParser()
 config.read("detector.ini")
@@ -29,6 +30,8 @@ xy_coord = []
 size_detect = 20
 # Кортеж адресов обрабатываемых файлов
 filepath = ()
+# Чувствительность ffmpeg
+sens_ff = 4
 
 
 def open_file():
@@ -115,12 +118,14 @@ def motion(event):
         canvas.delete("myRectangle")
 
 
-def apply(s_d, w_d):
+def apply(s_d, w_d,s_f):
     """
     Функция обработки нажатия кнопки - Применить
     """
     global size_detect
+    global sens_ff
     size_detect = s_d
+    sens_ff = s_f
     # print(size_detect)
     w_d.destroy()
 
@@ -151,25 +156,69 @@ def zone_detect():
     cap.release()
     window_zone = tk.Toplevel(window)
     window_zone.title("выберите зону детекции")
-    window_zone.rowconfigure([0, 1, 2, 3], minsize=30)
+    window_zone.rowconfigure([0, 1, 2, 3, 4], minsize=30)
     window_zone.columnconfigure([0, 1], minsize=100)
     _, x_win, y_win = window.geometry().split('+')
     window_zone.geometry('+'+x_win+'+'+y_win)
     lab_text_zone = tk.Label(window_zone, text="Чувствительность\nВ _% от зоны поиска")
-    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone))
+    lab_ffmpeg = tk.Label(window_zone, text="Чувствительность ffmpeg\n [1..9]")
+    btn_prim = tk.Button(window_zone, text="Применить", width=12, command=lambda: apply(ent_proc.get(), window_zone,
+                                                                                        ent_ffmpeg.get()))
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
     ent_proc.insert(0, str(size_detect))  # Выводим в эту строку значение по умолчанию 50%
+    ent_ffmpeg = tk.Entry(window_zone)
+    ent_ffmpeg.insert(0,str(sens_ff))
     lab_text_zone.grid(row=0, column=1, sticky='s', padx=5, pady=5)
-    btn_prim.grid(row=3, column=1, padx=5, pady=5)
     ent_proc.grid(row=1, column=1, sticky='n', padx=5, pady=5)
+    lab_ffmpeg.grid(row=2, column=1, sticky='s', padx=5, pady=5)
+    ent_ffmpeg.grid(row=3, column=1, sticky='n', padx=5, pady=5)
+    btn_prim.grid(row=4, column=1, padx=5, pady=5)
+
     global canvas
     canvas = tk.Canvas(window_zone, width=int(frame_width) // frame_zoom, height=int(frame_height) // frame_zoom)
     canvas.create_image(0, 0, anchor="nw", image=imgtk)
     canvas.create_rectangle(xy_coord[0][0], xy_coord[0][1], xy_coord[1][0], xy_coord[1][1], outline='#3F0', width=3,
                             tags="myRectangle")
-    canvas.grid(row=0, column=0, rowspan=4, padx=5, pady=5)
+    canvas.grid(row=0, column=0, rowspan=5, padx=5, pady=5)
     canvas.bind('<Button-1>', motion)
 
+
+def ffmpeg_det():
+    if len(xy_coord) == 2:
+        but_ffmpeg['text'] = 'В работе'
+        window.update()
+        width_ff = str((xy_coord[1][1] - xy_coord[0][1]) * frame_zoom)
+        height_ff = str((xy_coord[1][0] - xy_coord[0][0]) * frame_zoom)
+        x_ff = str(xy_coord[0][0] * frame_zoom)
+        y_ff = str(xy_coord[0][1] * frame_zoom)
+
+        for file_path_id in range(int(lab_o_count['text']), len(filepath)):
+            file_path = filepath[file_path_id]
+            start_detect = time.time()
+            os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff+",select='gt(scene,0.00"+
+                      sens_ff+")',"+'setpts=N/(25*TB)" -y '+ file_path[:-4] +
+                      '_crop_detect' + file_path[len(file_path) - 4:])
+            lab_o_count["text"] = filepath.index(file_path) + 1
+            window.update()
+            end_detect = time.time()  # Время завершения обработки видео файла
+            # Выводит время затраченное на обработку файла
+            print(file_path, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
+            # ffmpeg -i test.avi -vf "crop=300:300:1200:200,select='gt(scene,0.009)',setpts=N/(25*TB)" -y out2.mp4
+            # ffmpeg -i pr.avi -vf "crop=300:300:740:300,select='gt(scene,0.004)',showinfo" -f null - > cor.log 2>&1
+            # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
+
+        #if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
+        #    my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
+        #    for name_file in os.listdir(os.path.dirname(file_path)):
+        #        if 'detect' in name_file:
+        #            my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
+        #    my_file.close()
+        #    os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
+        #            '_all_result' + file_path[len(file_path) - 4:])
+        #    os.remove('list.txt')
+
+    elif len(xy_coord) == 0:
+        tkinter.messagebox.showinfo("Внимание", "Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
 
 window = tk.Tk()  # Создается главное окно
 window.title("Детектор движения в файле v.1.2")  # Установка названия окна
@@ -204,6 +253,7 @@ lab_chk_cut = tk.Checkbutton(text="Склеить фрагменты", variable=
 lab2 = tk.Label(text="00:00")
 but_start = tk.Button(text="Старт", command=start, width=12)
 but_pause = tk.Button(text="Пауза", command=pause, width=12)
+but_ffmpeg = tk.Button(text='Ffmpeg det', command=ffmpeg_det, width=12)
 
 # Размещаем его на экране
 lab_file.grid(row=0, column=0)
@@ -216,6 +266,7 @@ lab_obr.grid(row=2, column=0)
 lab_o_count.grid(row=2, column=1)
 but_start.grid(row=2, column=2)
 but_pause.grid(row=3, column=2)
+but_ffmpeg.grid(row=4,column=2)
 lab_chk.grid(row=3, column=0, sticky="w")
 lab_chk_cut.grid(row=4, column=0, sticky="w")
 window.mainloop()
