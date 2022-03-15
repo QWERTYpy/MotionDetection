@@ -69,11 +69,13 @@ def start(flag=True):
                 result_cor = dt.corrector(file_path, chk_video.get(), xy_coord, frame_zoom,
                                           size_detect, lab_o_proc, window, frame_shift, play_speed, but_start,
                                           but_pause)
-                if result_cor == 'Pause': break
+                if result_cor == 'Pause':
+                    break
                 elif result_cor == 'Ffmpeg':
                     print("Для корректной работы необходим файл ffmpeg.exe")
                     break
-            elif result_det == 'Pause': break
+            elif result_det == 'Pause':
+                break
 
             if but_start['text'] == "Стоп" and but_pause['text'] == 'Пауза':
                 lab_o_count["text"] = filepath.index(file_path) + 1
@@ -119,7 +121,7 @@ def motion(event):
         canvas.delete("myRectangle")
 
 
-def apply(s_d, w_d,s_f):
+def apply(s_d, w_d, s_f):
     """
     Функция обработки нажатия кнопки - Применить
     """
@@ -168,7 +170,7 @@ def zone_detect():
     ent_proc = tk.Entry(window_zone)  # Создаем виджет с пустой строкой
     ent_proc.insert(0, str(size_detect))  # Выводим в эту строку значение по умолчанию 50%
     ent_ffmpeg = tk.Entry(window_zone)
-    ent_ffmpeg.insert(0,str(sens_ff))
+    ent_ffmpeg.insert(0, str(sens_ff))
     lab_text_zone.grid(row=0, column=1, sticky='s', padx=5, pady=5)
     ent_proc.grid(row=1, column=1, sticky='n', padx=5, pady=5)
     lab_ffmpeg.grid(row=2, column=1, sticky='s', padx=5, pady=5)
@@ -192,19 +194,21 @@ def ffmpeg_det():
         height_ff = str((xy_coord[1][0] - xy_coord[0][0]) * frame_zoom)
         x_ff = str(xy_coord[0][0] * frame_zoom)
         y_ff = str(xy_coord[0][1] * frame_zoom)
+
         def ff_time(ff_t):
             h = int(ff_t // 3600)
             m = int((ff_t // 60) % 60)
-            s = int(ff_t % 60)
-            return "%02d:%02d:%02d" % (h, m, s)
+            s = ff_t % 60
+            return "%02d:%02d:%02.3f" % (h, m, s)
 
         for file_path_id in range(int(lab_o_count['text']), len(filepath)):
             file_path = filepath[file_path_id]
             start_detect = time.time()
-            os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff+",select='gt(scene,0.00"+
-                      sens_ff+")',"+'setpts=N/(25*TB)" -y '+ file_path[:-4] +
-                      '_crop_detect' + file_path[len(file_path) - 4:])
-            """
+            # Данный код работает, но он создает кропнутый видеофрагмент
+            # os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff+
+            #          ",select='gt(scene,0.00"+ sens_ff+")',"+'setpts=N/(25*TB)" -y '+ file_path[:-4] +
+            #          '_crop_detect' + file_path[len(file_path) - 4:])
+
             os.system('ffmpeg -i ' + file_path + ' -vf "crop=' + width_ff + ':' + height_ff + ':' + x_ff + ':' + y_ff +
                       ",select='gt(scene,0.00" + sens_ff + ")'," + 'showinfo" -f null - > '+file_path+'.txt 2>&1')
             if os.path.exists(file_path+'.txt'):
@@ -213,67 +217,21 @@ def ffmpeg_det():
                 sec_inf = []
                 for line in file_inf:
                     if "pts_time:" in line:
-                        sec_inf.append(int(float(line[line.find("pts_time:")+9:line.find("pos:")])))
+                        sec_inf.append(float(line[line.find("pts_time:")+9:line.find("pos:")]))
+                file_inf.close()
 
-                print(sec_inf)
-                for id in list(sec_inf):
-                    if sec_inf.count(id) > 1:
-                        sec_inf.remove(id)
+                for ss in sec_inf:
+                    os.system('ffmpeg -ss '+ff_time(ss)+' -i '+file_path+' -vframes 1 -y '+file_path[:-4] + '_' +
+                              str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png")
+                    # ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
+                    # ffmpeg  -ss 00:00:4.535 -i pr.avi -vframes 1 -y out3.png
+                    # ffmpeg -framerate 24 -i test_%03d_ff_tmp.png output.mp4
+            os.system('ffmpeg -framerate 24 -i ' + file_path[:-4]+'_%03d_ff_tmp.png -y ' + file_path[:-4] +
+                      '_detect' + '.mp4')  # + file_path[len(file_path) - 4:])
 
-                print(sec_inf)
-                sec_line = []
-                sec_id = 0
-                print('Длина', len(sec_inf))
-                #print(sec_inf[64])
-                while sec_id < len(sec_inf):
-                    #print(sec_id)
-                    left_sec = sec_inf[sec_id]
-                    while sec_inf[sec_id] - left_sec < 1:
-                        if sec_id < len(sec_inf)-1:
-                            sec_id+=1
-                        else:
-                            sec_id+=1
-                            break
-                    sec_id-=1
-                    right_sec = sec_inf[sec_id]
-                    sec_line.append([left_sec, right_sec])
-                    sec_id += 1
-                print(sec_line)
-
-                def ff_rec():
-                    #global sec_line
-                    print(sec_line)
-                    for ff_list_id in range(0, len(sec_line)):
-                        if ff_list_id == len(sec_line) - 1:
-                            return sec_line
-                        if sec_line[ff_list_id + 1][0] - sec_line[ff_list_id][1] <= 2:
-                            sec_line.insert(ff_list_id, [sec_line[ff_list_id][0], sec_line[ff_list_id + 1][1]])
-                            sec_line.pop(ff_list_id + 1)
-                            sec_line.pop(ff_list_id + 1)
-                            break
-                    ff_rec()
-
-                ff_rec()
-                print(sec_line)
-                print(sec_line)
-                for ss, to in sec_line:
-                    print(ff_time(ss), ff_time(to+1))
-                    os.system('ffmpeg -ss '+ff_time(ss)+' -to '+ff_time(to+1)+' -i '+file_path+' -c copy -y '+file_path[:-4] +
-                    str("%03d" % sec_line.index([ss, to]))+ "ff_tmp" + file_path[len(file_path) - 4:])
-                    #ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
-
-            my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
-            for name_file in os.listdir(os.path.dirname(file_path)):
-                if 'ff_tmp' in name_file:
-                    my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
-            my_file.close()
-            os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
-                    '_all_result' + file_path[len(file_path) - 4:])
-            os.remove('list.txt')
-            file_inf.close()
             os.remove(file_path+'.txt')
             for name_file in os.listdir(os.path.dirname(file_path)):
-                if 'ff_tmp' in name_file:
+                if '_ff_tmp' in name_file:
                     os.remove(os.path.dirname(file_path) + "/" + name_file)
 
             lab_o_count["text"] = filepath.index(file_path) + 1
@@ -284,18 +242,20 @@ def ffmpeg_det():
             # ffmpeg -i test.avi -vf "crop=300:300:1200:200,select='gt(scene,0.009)',setpts=N/(25*TB)" -y out2.mp4
             # ffmpeg -i pr.avi -vf "crop=300:300:740:300,select='gt(scene,0.004)',showinfo" -f null - > cor.log 2>&1
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
-            """
-        but_ffmpeg['text'] = 'Готово'
-        window.update()
-        #if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
-        #    my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
-        #    for name_file in os.listdir(os.path.dirname(file_path)):
-        #        if 'detect' in name_file:
-        #            my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
-        #    my_file.close()
-        #    os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
-        #            '_all_result' + file_path[len(file_path) - 4:])
-        #    os.remove('list.txt')
+
+            # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
+            if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
+                my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
+                for name_file in os.listdir(os.path.dirname(file_path)):
+                    if 'detect' in name_file:
+                        my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
+                my_file.close()
+                os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
+                          '_all_result' + file_path[len(file_path) - 4:])
+                os.remove('list.txt')
+
+            but_ffmpeg['text'] = 'Готово'
+            window.update()
 
     elif len(xy_coord) == 0:
         tkinter.messagebox.showinfo("Внимание", "Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
