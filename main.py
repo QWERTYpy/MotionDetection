@@ -9,6 +9,7 @@ import os
 import configparser
 import tkinter.messagebox
 import time
+import shutil
 
 import detector as dt
 
@@ -209,10 +210,11 @@ def ffmpeg_det():
             #          ",select='gt(scene,0.00"+ sens_ff+")',"+'setpts=N/(25*TB)" -y '+ file_path[:-4] +
             #          '_crop_detect' + file_path[len(file_path) - 4:])
 
+            # Определяем сцены, а которых происходило движение и выгружаем данные в файл
             os.system('ffmpeg -i ' + file_path + ' -vf "crop=' + width_ff + ':' + height_ff + ':' + x_ff + ':' + y_ff +
                       ",select='gt(scene,0.00" + sens_ff + ")'," + 'showinfo" -f null - > '+file_path+'.txt 2>&1')
+            scene_detect = time.time()
             if os.path.exists(file_path+'.txt'):
-                print('Существует')
                 file_inf = open(file_path+'.txt', 'r')
                 sec_inf = []
                 for line in file_inf:
@@ -220,25 +222,57 @@ def ffmpeg_det():
                         sec_inf.append(float(line[line.find("pts_time:")+9:line.find("pos:")]))
                 file_inf.close()
 
+                # Создаем временную папку
+                cur_dir, tmp_dir = file_path.rsplit('/', 1)
+                tmp_dir = tmp_dir[:len(tmp_dir)-4]
+                if os.path.exists(cur_dir+'//'+tmp_dir):
+                    try:
+                        #os.rmdir(cur_dir+'//'+tmp_dir)
+                        shutil.rmtree(cur_dir+'//'+tmp_dir)
+                    except:
+                        print('Каталог уже существует, удаление невозможно.')
+                    else:
+                        os.mkdir(cur_dir + '//' + tmp_dir)
+                else:
+                    os.mkdir(cur_dir+'//'+tmp_dir)
+
+
+                #print(cur_dir, tmp_dir)
+                #print(os.path.basename(file_path))
+
+                #os.mkdir(os.path.dirname(file_path)+"//")
+                # Сохраняем *.png с найденными сценами
                 for ss in sec_inf:
-                    os.system('ffmpeg -ss '+ff_time(ss)+' -i '+file_path+' -vframes 1 -y '+file_path[:-4] + '_' +
-                              str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png")
+                    os.system('ffmpeg -ss '+ff_time(ss)+' -i '+file_path+' -vframes 1 -y '+cur_dir+'//'+tmp_dir +
+                              '//'+str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png 2>nul")
+
+                    # Примеры использования ffmpeg чтобы не забыть
                     # ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
                     # ffmpeg  -ss 00:00:4.535 -i pr.avi -vframes 1 -y out3.png
                     # ffmpeg -framerate 24 -i test_%03d_ff_tmp.png output.mp4
-            os.system('ffmpeg -framerate 24 -i ' + file_path[:-4]+'_%03d_ff_tmp.png -y ' + file_path[:-4] +
+            # Собираем из *.png в один видео файл
+            os.system('ffmpeg -framerate 24 -i ' + cur_dir+'//'+tmp_dir + '//%03d_ff_tmp.png -y ' + file_path[:-4] +
                       '_detect' + '.mp4')  # + file_path[len(file_path) - 4:])
-
+            # Удаляем файл с метками
             os.remove(file_path+'.txt')
-            for name_file in os.listdir(os.path.dirname(file_path)):
-                if '_ff_tmp' in name_file:
-                    os.remove(os.path.dirname(file_path) + "/" + name_file)
+
+            try:
+                shutil.rmtree(cur_dir + '//' + tmp_dir)
+            except:
+                print('Каталог очищен, удаление невозможно.')
+
+
+            #for name_file in os.listdir(os.path.dirname(file_path)):
+            #    if '_ff_tmp' in name_file:
+            #        os.remove(os.path.dirname(file_path) + "/" + name_file)
 
             lab_o_count["text"] = filepath.index(file_path) + 1
             window.update()
             end_detect = time.time()  # Время завершения обработки видео файла
             # Выводит время затраченное на обработку файла
-            print(file_path, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
+            print(file_path, '->', str(time.strftime("%M:%S", time.localtime(scene_detect - start_detect))),
+                  str(time.strftime("%M:%S", time.localtime(end_detect - scene_detect))),
+                  str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
             # ffmpeg -i test.avi -vf "crop=300:300:1200:200,select='gt(scene,0.009)',setpts=N/(25*TB)" -y out2.mp4
             # ffmpeg -i pr.avi -vf "crop=300:300:740:300,select='gt(scene,0.004)',showinfo" -f null - > cor.log 2>&1
             # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
