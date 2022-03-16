@@ -10,6 +10,7 @@ import configparser
 import tkinter.messagebox
 import time
 import shutil
+from threading import Thread
 
 import detector as dt
 
@@ -48,13 +49,15 @@ def open_file():
     lab_f_count["text"] = len(filepath)
     lab_o_count["text"] = 0
     but_start['text'] = 'Старт'
-    but_ffmpeg['text'] = 'Ffmpeg det'
+    but_ffmpeg['text'] = 'Ffmpeg детектор'
 
 
 def start(flag=True):
     """
     Функция обработки нажатия кнопки Старт
     """
+    but_ffmpeg.config(state='disabled')
+    but_ffmpeg_union.config(state='disabled')
     if len(xy_coord) == 2:
         if but_start['text'] == 'Старт' and flag:
             but_start['text'] = 'Стоп'
@@ -92,6 +95,8 @@ def start(flag=True):
                 os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
                           '_all_result' + file_path[len(file_path) - 4:])
                 os.remove('list.txt')
+            but_ffmpeg.config(state='active')
+            but_ffmpeg_union.config(state='active')
     elif len(xy_coord) == 0:
         tkinter.messagebox.showinfo("Внимание", "Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
 
@@ -187,118 +192,148 @@ def zone_detect():
     canvas.bind('<Button-1>', motion)
 
 
+def ff_time(ff_t):
+    h = int(ff_t // 3600)
+    m = int((ff_t // 60) % 60)
+    s = ff_t % 60
+    return "%02d:%02d:%02.3f" % (h, m, s)
+
+
+def ffmpeg_frame_to_png(file_path, filepath):
+    """ Данная функция извлекает из видеофайла фрагменты на которых было обнаружено движение, и собирает их в
+    отдельный видеофайл.
+
+    """
+    if os.path.exists(file_path + '.txt'):
+        file_inf = open(file_path + '.txt', 'r')
+        sec_inf = []
+        for line in file_inf:
+            if "pts_time:" in line:
+                sec_inf.append(float(line[line.find("pts_time:") + 9:line.find("pos:")]))
+        file_inf.close()
+
+        # Создаем временную папку, в которой будут храниться фреймы
+        cur_dir, tmp_dir = file_path.rsplit('/', 1)
+        tmp_dir = tmp_dir[:len(tmp_dir) - 4]
+        if os.path.exists(cur_dir + '//' + tmp_dir):
+            try:
+                shutil.rmtree(cur_dir + '//' + tmp_dir)
+            except PermissionError:
+                print('Каталог уже существует, удаление невозможно.')
+            else:
+                os.mkdir(cur_dir + '//' + tmp_dir)
+        else:
+            os.mkdir(cur_dir + '//' + tmp_dir)
+
+        # Сохраняем *.png с найденными сценами
+        for ss in sec_inf:
+            os.system('ffmpeg -ss ' + ff_time(ss) + ' -i ' + file_path + ' -vframes 1 -y ' + cur_dir + '//' + tmp_dir +
+                      '//' + str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png 2>nul")
+
+            # Примеры использования ffmpeg чтобы не забыть
+            # ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
+            # ffmpeg  -ss 00:00:4.535 -i pr.avi -vframes 1 -y out3.png
+            # ffmpeg -framerate 24 -i test_%03d_ff_tmp.png output.mp4
+
+        # Собираем из *.png в один видео файл
+        os.system('ffmpeg -framerate 24 -i ' + cur_dir + '//' + tmp_dir + '//%03d_ff_tmp.png -y ' + file_path[:-4] +
+                  '_detect' + '.mp4 2>nul')  # + file_path[len(file_path) - 4:])
+        # Удаляем файл с метками
+        os.remove(file_path + '.txt')
+
+        try:
+            shutil.rmtree(cur_dir + '//' + tmp_dir)
+        except PermissionError:
+            print('Каталог очищен, удаление невозможно.')
+    lab_o_proc['text'] = int(lab_o_proc['text'])+1
+    if len(filepath) == int(lab_o_proc['text']):
+        but_ffmpeg['text'] = 'Готово'
+        but_o_file.config(state='active')
+        but_zone.config(state='active')
+        but_pause.config(state='active')
+        but_start.config(state='active')
+        but_ffmpeg_union.config(state='active')
+    window.update()
+
+
+def detect_all_to_one(file_path):
+    my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
+    for name_file in os.listdir(os.path.dirname(file_path)):
+        if 'detect' in name_file:
+            my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
+    my_file.close()
+    os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
+              '_all_result' + file_path[len(file_path) - 4:])
+    os.remove('list.txt')
+
+
 def ffmpeg_det():
     if len(xy_coord) == 2:
         but_ffmpeg['text'] = 'В работе'
+        lab_o_proc['text'] = '0'
+        but_o_file.config(state='disabled')
+        but_zone.config(state='disabled')
+        but_pause.config(state='disabled')
+        but_start.config(state='disabled')
+        but_ffmpeg_union.config(state='disabled')
         window.update()
         width_ff = str((xy_coord[1][1] - xy_coord[0][1]) * frame_zoom)
         height_ff = str((xy_coord[1][0] - xy_coord[0][0]) * frame_zoom)
         x_ff = str(xy_coord[0][0] * frame_zoom)
         y_ff = str(xy_coord[0][1] * frame_zoom)
 
-        def ff_time(ff_t):
-            h = int(ff_t // 3600)
-            m = int((ff_t // 60) % 60)
-            s = ff_t % 60
-            return "%02d:%02d:%02.3f" % (h, m, s)
-
         for file_path_id in range(int(lab_o_count['text']), len(filepath)):
             file_path = filepath[file_path_id]
             start_detect = time.time()
-            # Данный код работает, но он создает кропнутый видеофрагмент
-            # os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff+
-            #          ",select='gt(scene,0.00"+ sens_ff+")',"+'setpts=N/(25*TB)" -y '+ file_path[:-4] +
-            #          '_crop_detect' + file_path[len(file_path) - 4:])
 
-            # Определяем сцены, а которых происходило движение и выгружаем данные в файл
-            os.system('ffmpeg -i ' + file_path + ' -vf "crop=' + width_ff + ':' + height_ff + ':' + x_ff + ':' + y_ff +
-                      ",select='gt(scene,0.00" + sens_ff + ")'," + 'showinfo" -f null - > '+file_path+'.txt 2>&1')
-            scene_detect = time.time()
-            if os.path.exists(file_path+'.txt'):
-                file_inf = open(file_path+'.txt', 'r')
-                sec_inf = []
-                for line in file_inf:
-                    if "pts_time:" in line:
-                        sec_inf.append(float(line[line.find("pts_time:")+9:line.find("pos:")]))
-                file_inf.close()
+            if chk_crop.get():
+                os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff +
+                          ",select='gt(scene,0.00" + sens_ff+")',"+'setpts=N/(25*TB)" -y ' + file_path[:-4] +
+                          '_crop_detect.mp4 2>nul')
+                #         '_crop_detect' + file_path[len(file_path) - 4:] + ' 2>nul')
+                end_detect = time.time()  # Время завершения обработки видео файла
+            else:
+                # Определяем сцены, в которых происходило движение и выгружаем данные в файл
+                os.system('ffmpeg -i ' + file_path + ' -vf "crop=' + width_ff + ':' + height_ff + ':' + x_ff + ':' +
+                          y_ff + ",select='gt(scene,0.00" + sens_ff + ")'," +
+                          'showinfo" -f null - > '+file_path+'.txt 2>&1')
+                end_detect = time.time()  # Время завершения обработки видео файла
+                # Запускаем извлечение фреймов и сборку файла отдельным потоком
+                ffmpeg_th = Thread(target=ffmpeg_frame_to_png, args=(file_path, filepath,))
+                ffmpeg_th.start()
+                but_ffmpeg['text'] = 'Идет анализ'
+                window.update()
 
-                # Создаем временную папку
-                cur_dir, tmp_dir = file_path.rsplit('/', 1)
-                tmp_dir = tmp_dir[:len(tmp_dir)-4]
-                if os.path.exists(cur_dir+'//'+tmp_dir):
-                    try:
-                        #os.rmdir(cur_dir+'//'+tmp_dir)
-                        shutil.rmtree(cur_dir+'//'+tmp_dir)
-                    except:
-                        print('Каталог уже существует, удаление невозможно.')
-                    else:
-                        os.mkdir(cur_dir + '//' + tmp_dir)
-                else:
-                    os.mkdir(cur_dir+'//'+tmp_dir)
-
-
-                #print(cur_dir, tmp_dir)
-                #print(os.path.basename(file_path))
-
-                #os.mkdir(os.path.dirname(file_path)+"//")
-                # Сохраняем *.png с найденными сценами
-                for ss in sec_inf:
-                    os.system('ffmpeg -ss '+ff_time(ss)+' -i '+file_path+' -vframes 1 -y '+cur_dir+'//'+tmp_dir +
-                              '//'+str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png 2>nul")
-
-                    # Примеры использования ffmpeg чтобы не забыть
-                    # ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
-                    # ffmpeg  -ss 00:00:4.535 -i pr.avi -vframes 1 -y out3.png
-                    # ffmpeg -framerate 24 -i test_%03d_ff_tmp.png output.mp4
-            # Собираем из *.png в один видео файл
-            os.system('ffmpeg -framerate 24 -i ' + cur_dir+'//'+tmp_dir + '//%03d_ff_tmp.png -y ' + file_path[:-4] +
-                      '_detect' + '.mp4')  # + file_path[len(file_path) - 4:])
-            # Удаляем файл с метками
-            os.remove(file_path+'.txt')
-
-            try:
-                shutil.rmtree(cur_dir + '//' + tmp_dir)
-            except:
-                print('Каталог очищен, удаление невозможно.')
-
-
-            #for name_file in os.listdir(os.path.dirname(file_path)):
-            #    if '_ff_tmp' in name_file:
-            #        os.remove(os.path.dirname(file_path) + "/" + name_file)
-
+            # Увеличиваем счетчик обработанных файлов
             lab_o_count["text"] = filepath.index(file_path) + 1
             window.update()
-            end_detect = time.time()  # Время завершения обработки видео файла
+
             # Выводит время затраченное на обработку файла
-            print(file_path, '->', str(time.strftime("%M:%S", time.localtime(scene_detect - start_detect))),
-                  str(time.strftime("%M:%S", time.localtime(end_detect - scene_detect))),
-                  str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
+            print(file_path, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))
+
+            # Примеры использования
             # ffmpeg -i test.avi -vf "crop=300:300:1200:200,select='gt(scene,0.009)',setpts=N/(25*TB)" -y out2.mp4
             # ffmpeg -i pr.avi -vf "crop=300:300:740:300,select='gt(scene,0.004)',showinfo" -f null - > cor.log 2>&1
-            # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
 
-            # Если стоит отметка об объединении и конвертирован последний файл, то запустить объединение
-            if chk_cut.get() and len(filepath) == filepath.index(file_path) + 1:
-                my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
-                for name_file in os.listdir(os.path.dirname(file_path)):
-                    if 'detect' in name_file:
-                        my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
-                my_file.close()
-                os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
-                          '_all_result' + file_path[len(file_path) - 4:])
-                os.remove('list.txt')
-
+        # ffmpeg_th.join()
+        if chk_crop.get():
             but_ffmpeg['text'] = 'Готово'
+            but_o_file.config(state='active')
+            but_zone.config(state='active')
+            but_pause.config(state='active')
+            but_start.config(state='active')
+            but_ffmpeg_union.config(state='active')
             window.update()
 
     elif len(xy_coord) == 0:
         tkinter.messagebox.showinfo("Внимание", "Пожалуйста, укажите зону обнаружения и размер объекта детекции.")
 
+
 window = tk.Tk()  # Создается главное окно
 window.title("Детектор движения в файле v.1.2")  # Установка названия окна
 window.resizable(width=False, height=False)
-window.geometry('350x150+100+100')
-window.rowconfigure([0, 1, 2, 3, 4], minsize=30)
+window.geometry('350x210+100+100')
+window.rowconfigure([0, 1, 2, 3, 4, 5, 6], minsize=30)
 window.columnconfigure([0, 1, 2], minsize=100)
 
 # Создаем необходимые элементы управления
@@ -306,11 +341,11 @@ window.columnconfigure([0, 1, 2], minsize=100)
 lab_file = tk.Label(text="Файлов:")
 lab_f_count = tk.Label(text="0")
 # Кнопка открытия диалога выбора файлов
-but_o_file = tk.Button(text="Открыть", width=12, command=open_file)
+but_o_file = tk.Button(text="Открыть", width=14, command=open_file)
 # Кнопка открытия диалога выбора зоны детекции
-but_zone = tk.Button(text="Зона детекции", width=12, command=zone_detect)
+but_zone = tk.Button(text="Зона детекции", width=14, command=zone_detect)
 # Прогресс:  __%
-lab_proc = tk.Label(text="Прогресс:")
+lab_proc = tk.Label(text="Проанализировано:")
 lab_o_proc = tk.Label(text="0 %")
 # Обработано: шт
 lab_obr = tk.Label(text="Обработано:")
@@ -324,23 +359,30 @@ lab_chk.select()
 chk_cut = tk.IntVar()
 chk_cut.set(0)
 lab_chk_cut = tk.Checkbutton(text="Склеить фрагменты", variable=chk_cut)
-lab2 = tk.Label(text="00:00")
-but_start = tk.Button(text="Старт", command=start, width=12)
-but_pause = tk.Button(text="Пауза", command=pause, width=12)
-but_ffmpeg = tk.Button(text='Ffmpeg det', command=ffmpeg_det, width=12)
+but_start = tk.Button(text="Старт", command=start, width=14)
+but_pause = tk.Button(text="Пауза", command=pause, width=14)
+but_ffmpeg = tk.Button(text='Ffmpeg детектор', command=ffmpeg_det, width=14)
+but_ffmpeg_union = tk.Button(text='Объединить', command=lambda: detect_all_to_one(filepath[0]), width=14)
+lab_text = tk.Label(text="Встроенные в Ffmpeg алгоритмы ->")
+chk_crop = tk.IntVar()
+chk_crop.set(0)
+lab_chk_crop = tk.Checkbutton(text="Быстрый кроп", variable=chk_crop)
 
 # Размещаем его на экране
 lab_file.grid(row=0, column=0)
 lab_f_count.grid(row=0, column=1)
 but_o_file.grid(row=0, column=2)
-lab_proc.grid(row=1, column=0)
-lab_o_proc.grid(row=1, column=1)
+lab_proc.grid(row=2, column=0)
+lab_o_proc.grid(row=2, column=1)
 but_zone.grid(row=1, column=2)
-lab_obr.grid(row=2, column=0)
-lab_o_count.grid(row=2, column=1)
+lab_obr.grid(row=1, column=0)
+lab_o_count.grid(row=1, column=1)
 but_start.grid(row=2, column=2)
 but_pause.grid(row=3, column=2)
-but_ffmpeg.grid(row=4,column=2)
+but_ffmpeg.grid(row=5, column=2)
+but_ffmpeg_union.grid(row=6, column=2)
+lab_text.grid(row=5, column=0, columnspan=2)
 lab_chk.grid(row=3, column=0, sticky="w")
 lab_chk_cut.grid(row=4, column=0, sticky="w")
+lab_chk_crop.grid(row=6, column=0)
 window.mainloop()
