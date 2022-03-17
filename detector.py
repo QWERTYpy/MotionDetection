@@ -26,12 +26,10 @@ def corrector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, si
 
     """
     if os.path.exists("ffmpeg.exe"):
-        os.system('ffmpeg -i "' + name_file + '" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "' +
-                  name_file[:-4] + '_source-video.h264"')
-        os.system('ffmpeg -fflags +genpts -r 25 -i "' + name_file[:-4] + '_source-video.h264" -vcodec copy -y "' +
-                  name_file[:-4] + '_recovered.avi"')
-        os.remove(name_file[:-4] + '_source-video.h264')
-        return detector(name_file[:-4] + '_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
+        os.system(f'ffmpeg -i "{name_file}" -map 0:v -vcodec copy -bsf:v h264_mp4toannexb  -y "{name_file[:-4]}_source-video.h264"')
+        os.system(f'ffmpeg -fflags +genpts -r 25 -i "{name_file[:-4]}_source-video.h264" -vcodec copy -y "{name_file[:-4]}_recovered.avi"')
+        os.remove(f'{name_file[:-4]}_source-video.h264')
+        return detector(f'{name_file[:-4]}_recovered.avi', chk_video_det, xy_coord, frame_zoom, size_detect,
                         lab_o_proc, window, frame_shift, play_speed, but_start, but_pause)
 
     else:
@@ -101,7 +99,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
                 print('Превышено допустимое количество пустых фреймов. Начато восстановление файла.')
                 output.release()  # Закрываем файл для вывода
                 cv2.destroyAllWindows()
-                os.remove(name_file[:-4] + '_detect' + name_file[len(name_file) - 4:])  # Удаляем его
+                os.remove(f'{name_file[:-4]}_detect{name_file[len(name_file) - 4:]}')  # Удаляем его
                 return 'Correct'  # Возвращаем флаг, что надо запустить восстановление
             continue
 
@@ -132,7 +130,7 @@ def detector(name_file: str, chk_video_det, xy_coord: list, frame_zoom: int, siz
     output.release()
     cv2.destroyAllWindows()
     if frames_output == 0:  # Если сохраненных фреймов нет, то удаляем файл
-        os.remove(name_file[:-4] + '_detect' + name_file[len(name_file) - 4:])  # Удаляем его
+        os.remove(f'{name_file[:-4]}_detect{name_file[len(name_file) - 4:]}')  # Удаляем его
     end_detect = time.time()  # Время завершения обработки видео файла
     # Выводит время затраченное на обработку файла
     print(name_file, '->', str(time.strftime("%M:%S", time.localtime(end_detect - start_detect))))

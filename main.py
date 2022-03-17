@@ -16,6 +16,8 @@ import detector as dt
 
 """
 Нужно добавить проверку вводимых значений
+Разобраться с форматами выводимых видео.
+Настроить вывод в консоль
 """
 config = configparser.ConfigParser()
 config.read("detector.ini")
@@ -38,11 +40,11 @@ sens_ff = 4
 
 def open_file():
     """
-    Функция отвечает за открытие файла
+    Процедура отвечает за открытие диалога выбора файла
     """
     global filepath
     filepath = askopenfilenames(
-        filetypes=[('Видео файлы', '*.avi'), ('Все файлы', '*')]
+        filetypes=[('Видео файлы avi', '*.avi'), ('Видео файлы mp4', '*.mp4'), ('Все файлы', '*')]
     )
     if not filepath:
         return
@@ -54,7 +56,7 @@ def open_file():
 
 def start(flag=True):
     """
-    Функция обработки нажатия кнопки Старт
+    Процедура обработки нажатия кнопки Старт
     """
     but_ffmpeg.config(state='disabled')
     but_ffmpeg_union.config(state='disabled')
@@ -102,6 +104,9 @@ def start(flag=True):
 
 
 def pause():
+    """ Процедура отвечает за обработку кнопки - Пауза
+
+    """
     if but_start['text'] == 'Старт':
         return False
     if but_pause['text'] == 'Пауза':
@@ -112,8 +117,8 @@ def pause():
 
 
 def motion(event):
-    """
-    Функция определения позиции курсора
+    """ Процедура определения позиции курсора
+
     """
     global xy_coord
     x, y = event.x, event.y
@@ -128,8 +133,7 @@ def motion(event):
 
 
 def apply(s_d, w_d, s_f):
-    """
-    Функция обработки нажатия кнопки - Применить
+    """ Процедура обработки нажатия кнопки - Применить
     """
     global size_detect
     global sens_ff
@@ -140,9 +144,8 @@ def apply(s_d, w_d, s_f):
 
 
 def zone_detect():
-    """
-    Функция отображает первый кадр для выбора на нем зоны детекции
-    @return:
+    """ Процедура отображает первый кадр для выбора на нем зоны детекции
+
     """
     global imgtk
     # Так как после отработки функции переменные удаляются, для отображения картинки делаем переменную глобальной
@@ -193,6 +196,9 @@ def zone_detect():
 
 
 def ff_time(ff_t):
+    """ Процедура для преобразования времени в нужный формат
+
+    """
     h = int(ff_t // 3600)
     m = int((ff_t // 60) % 60)
     s = ff_t % 60
@@ -200,7 +206,7 @@ def ff_time(ff_t):
 
 
 def ffmpeg_frame_to_png(file_path, filepath):
-    """ Данная функция извлекает из видеофайла фрагменты на которых было обнаружено движение, и собирает их в
+    """ Процедура функция извлекает из видеофайла фрагменты на которых было обнаружено движение, и собирает их в
     отдельный видеофайл.
 
     """
@@ -215,20 +221,20 @@ def ffmpeg_frame_to_png(file_path, filepath):
         # Создаем временную папку, в которой будут храниться фреймы
         cur_dir, tmp_dir = file_path.rsplit('/', 1)
         tmp_dir = tmp_dir[:len(tmp_dir) - 4]
-        if os.path.exists(cur_dir + '//' + tmp_dir):
+        if os.path.exists(f'{cur_dir}//{tmp_dir}'):
             try:
-                shutil.rmtree(cur_dir + '//' + tmp_dir)
+                shutil.rmtree(f'{cur_dir}//{tmp_dir}')
             except PermissionError:
                 print('Каталог уже существует, удаление невозможно.')
             else:
-                os.mkdir(cur_dir + '//' + tmp_dir)
+                os.mkdir(f'{cur_dir}//{tmp_dir}')
         else:
-            os.mkdir(cur_dir + '//' + tmp_dir)
+            os.mkdir(f'{cur_dir}//{tmp_dir}')
 
         # Сохраняем *.png с найденными сценами
         for ss in sec_inf:
-            os.system('ffmpeg -ss ' + ff_time(ss) + ' -i ' + file_path + ' -vframes 1 -y ' + cur_dir + '//' + tmp_dir +
-                      '//' + str("%03d" % sec_inf.index(ss)) + "_ff_tmp.png 2>nul")
+            os.system(f'ffmpeg -ss {ff_time(ss)} -i {file_path} -vframes 1 -y '
+                      f'{cur_dir}//{tmp_dir}//{str("%03d" % sec_inf.index(ss))}_ff_tmp.png 2>nul')
 
             # Примеры использования ffmpeg чтобы не забыть
             # ffmpeg -ss 00:00:01 -to 00:00:02 -i pr.avi -c copy -y out2.avi
@@ -236,13 +242,13 @@ def ffmpeg_frame_to_png(file_path, filepath):
             # ffmpeg -framerate 24 -i test_%03d_ff_tmp.png output.mp4
 
         # Собираем из *.png в один видео файл
-        os.system('ffmpeg -framerate 24 -i ' + cur_dir + '//' + tmp_dir + '//%03d_ff_tmp.png -y ' + file_path[:-4] +
-                  '_detect' + '.mp4 2>nul')  # + file_path[len(file_path) - 4:])
+        os.system(f'ffmpeg -framerate 24 -i {cur_dir}//{tmp_dir}//%03d_ff_tmp.png -y {file_path[:-4]}_detect.mp4 2>nul')
+        # + file_path[len(file_path) - 4:])
         # Удаляем файл с метками
         os.remove(file_path + '.txt')
 
         try:
-            shutil.rmtree(cur_dir + '//' + tmp_dir)
+            shutil.rmtree(f'{cur_dir}//{tmp_dir}')
         except PermissionError:
             print('Каталог очищен, удаление невозможно.')
     lab_o_proc['text'] = int(lab_o_proc['text'])+1
@@ -257,17 +263,22 @@ def ffmpeg_frame_to_png(file_path, filepath):
 
 
 def detect_all_to_one(file_path):
+    """ Процедура отвечает за склейку файлов с обнаруженным движением в отдельный файл
+
+    """
     my_file = open("list.txt", "w+")  # Создаем файл для хранения имен файлов для объединения
     for name_file in os.listdir(os.path.dirname(file_path)):
         if 'detect' in name_file:
             my_file.write("file '" + os.path.dirname(file_path) + "/" + name_file + "'\n")
     my_file.close()
-    os.system('ffmpeg -f concat -safe 0 -i list.txt -c copy -y ' + file_path[:-4] +
-              '_all_result' + file_path[len(file_path) - 4:])
+    os.system(f'ffmpeg -f concat -safe 0 -i list.txt -c copy -y {file_path[:-4]}_all_result{file_path[len(file_path) - 4:]}')
     os.remove('list.txt')
 
 
 def ffmpeg_det():
+    """ Процедура отвечающая за реализацию встроенных алгоритмов в Ffmpeg
+
+    """
     if len(xy_coord) == 2:
         but_ffmpeg['text'] = 'В работе'
         lab_o_proc['text'] = '0'
@@ -287,16 +298,15 @@ def ffmpeg_det():
             start_detect = time.time()
 
             if chk_crop.get():
-                os.system('ffmpeg -i '+file_path+' -vf "crop='+width_ff+':'+height_ff+':'+x_ff+':'+y_ff +
-                          ",select='gt(scene,0.00" + sens_ff+")',"+'setpts=N/(25*TB)" -y ' + file_path[:-4] +
-                          '_crop_detect.mp4 2>nul')
+                os.system(f'ffmpeg -i {file_path} -vf "crop={width_ff}:{height_ff}:{x_ff}:{y_ff},'
+                          f'select=\'gt(scene,0.00{sens_ff})\',setpts=N/(25*TB)" -y '
+                          f'{file_path[:-4]}_crop_detect.mp4 2>nul')
                 #         '_crop_detect' + file_path[len(file_path) - 4:] + ' 2>nul')
                 end_detect = time.time()  # Время завершения обработки видео файла
             else:
                 # Определяем сцены, в которых происходило движение и выгружаем данные в файл
-                os.system('ffmpeg -i ' + file_path + ' -vf "crop=' + width_ff + ':' + height_ff + ':' + x_ff + ':' +
-                          y_ff + ",select='gt(scene,0.00" + sens_ff + ")'," +
-                          'showinfo" -f null - > '+file_path+'.txt 2>&1')
+                os.system(f'ffmpeg -i {file_path} -vf "crop={width_ff}:{height_ff}:{x_ff}:{y_ff},'
+                          f'select=\'gt(scene,0.00{sens_ff})\',showinfo" -f null - > {file_path}.txt 2>&1')
                 end_detect = time.time()  # Время завершения обработки видео файла
                 # Запускаем извлечение фреймов и сборку файла отдельным потоком
                 ffmpeg_th = Thread(target=ffmpeg_frame_to_png, args=(file_path, filepath,))
