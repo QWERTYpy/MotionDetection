@@ -12,10 +12,10 @@ import time
 import shutil
 from threading import Thread
 
+
 import detector as dt
 
 """
-Нужно добавить проверку вводимых значений
 Разобраться с форматами выводимых видео.
 Настроить вывод в консоль
 """
@@ -78,7 +78,7 @@ def start(flag=True):
                 if result_cor == 'Pause':
                     break
                 elif result_cor == 'Ffmpeg':
-                    print("Для корректной работы необходим файл ffmpeg.exe")
+                    tkinter.messagebox.showinfo("Внимание", "Для корректной работы необходим файл ffmpeg.exe.")
                     break
             elif result_det == 'Pause':
                 break
@@ -137,10 +137,19 @@ def apply(s_d, w_d, s_f):
     """
     global size_detect
     global sens_ff
-    size_detect = s_d
-    sens_ff = s_f
-    # print(size_detect)
-    w_d.destroy()
+    try:
+        s_d = int(s_d)
+        s_f = int(s_f)
+    except ValueError:
+        tkinter.messagebox.showinfo("Внимание", "Проверьте корректность введенных данных: Чувствительность")
+    else:
+        if 1 <= s_f <= 9 and 0 < s_d <= 100:
+            sens_ff = s_f
+            size_detect = s_d
+            w_d.destroy()
+        else:
+            tkinter.messagebox.showinfo("Внимание", "Чувствительность вне диапазона")
+
 
 
 def zone_detect():
@@ -152,6 +161,7 @@ def zone_detect():
     if not len(filepath):
         tkinter.messagebox.showinfo("Внимание", "Пожалуйста, выберите файл для обработки.")
         return False
+
     cap = cv2.VideoCapture(filepath[0])  # Захватываем видео с файла
     global xy_coord
     frame_width = (cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # Получаем размер исходного видео
@@ -282,6 +292,7 @@ def ffmpeg_det():
     if len(xy_coord) == 2:
         but_ffmpeg['text'] = 'В работе'
         lab_o_proc['text'] = '0'
+        lab_o_count['text'] = '0'
         but_o_file.config(state='disabled')
         but_zone.config(state='disabled')
         but_pause.config(state='disabled')
@@ -340,7 +351,7 @@ def ffmpeg_det():
 
 
 window = tk.Tk()  # Создается главное окно
-window.title("Детектор движения в файле v.1.2")  # Установка названия окна
+window.title("Детектор движения в файле v.2.6")  # Установка названия окна
 window.resizable(width=False, height=False)
 window.geometry('350x210+100+100')
 window.rowconfigure([0, 1, 2, 3, 4, 5, 6], minsize=30)
@@ -373,6 +384,7 @@ but_start = tk.Button(text="Старт", command=start, width=14)
 but_pause = tk.Button(text="Пауза", command=pause, width=14)
 but_ffmpeg = tk.Button(text='Ffmpeg детектор', command=ffmpeg_det, width=14)
 but_ffmpeg_union = tk.Button(text='Объединить', command=lambda: detect_all_to_one(filepath[0]), width=14)
+but_ffmpeg_union.config(state='disabled')
 lab_text = tk.Label(text="Встроенные в Ffmpeg алгоритмы ->")
 chk_crop = tk.IntVar()
 chk_crop.set(0)
